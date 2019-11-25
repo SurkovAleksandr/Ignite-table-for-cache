@@ -1,12 +1,18 @@
 package startup;
 
 import data.A;
+import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.cache.Cache;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCluster;
 import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -39,25 +45,42 @@ public class ClientNodeSpringStartup {
     }
 
     /**
-     * Создание кэша с именем {@link #CACHE_NAME} и наполнение его данными.
-     * Если раскомментировать часть кода, то кэш будет создан с таблицей.
+     * Создание кэша с именем {@link #CACHE_NAME} без таблицы и наполнение его данными.
      * */
     @Test
-    public void createCache() {
+    public void createCacheWithoutTable() {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+            CacheConfiguration<Long, A> cacheCfg = new CacheConfiguration<>();
+            cacheCfg
+                .setName(CACHE_NAME);
+
+            IgniteCache<Long, A> cache = ignite.getOrCreateCache(cacheCfg);
+            //Наполнение кэша данными
+            for (long i = 1; i < 10; i++) {
+                cache.put(i, new A(i, "Vasja" + i));
+            }
+        }
+    }
+
+    /**
+     * Создание кэша с именем {@link #CACHE_NAME} c таблицей и наполнение его данными.
+     * */
+    @Test
+    public void createCacheWithTable() {
         try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
             CacheConfiguration<Long, A> cacheCfg = new CacheConfiguration<>();
             cacheCfg
                 .setName(CACHE_NAME)
-                /*.setQueryEntities(Collections.singleton(new QueryEntity(long.class.getName(), A.class.getName())
+                .setQueryEntities(Collections.singleton(new QueryEntity(long.class.getName(), A.class.getName())
                     .setTableName(TABLE_NAME)
                     .setFields(Stream.of(
-                            new AbstractMap.SimpleEntry<>("id", long.class.getName()),
-                            new AbstractMap.SimpleEntry<>("name", String.class.getName())
+                        new AbstractMap.SimpleEntry<>("id", long.class.getName()),
+                        new AbstractMap.SimpleEntry<>("name", String.class.getName())
                         ).collect(Collectors.toMap(
-                            AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue, (a, b) -> a, LinkedHashMap::new
+                        AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue, (a, b) -> a, LinkedHashMap::new
                         ))
                     )
-                ))*/;
+                ));
 
             IgniteCache<Long, A> cache = ignite.getOrCreateCache(cacheCfg);
             //Наполнение кэша данными
@@ -77,14 +100,15 @@ public class ClientNodeSpringStartup {
         try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
             IgniteCache<Object, Object> cache = ignite.getOrCreateCache(CACHE_NAME);
 
+            //Получение данных из кэша через итератор
             System.out.println("Data through iterator");
             for (Cache.Entry<Object, Object> entry : cache) {
                 System.out.println("Value from cache: " + entry);
             }
 
             /**
-             * Если таблицы нет, то будет ошибка: org.h2.jdbc.JdbcSQLException: Таблица "A_TABLE" не найдена
-             * Для создания таблицы надо вызвать {@link #createTableForCache()}
+             * Получение данных из кэша через SQL запрос
+             * todo Если таблицы нет, то будет ошибка: org.h2.jdbc.JdbcSQLException: Таблица "A_TABLE" не найдена
              * */
             System.out.println("Value through SQL");
             List<List<?>> all = cache.query(new SqlFieldsQuery("select * from " + TABLE_NAME)).getAll();
@@ -109,7 +133,7 @@ public class ClientNodeSpringStartup {
 
             List<List<?>> all = ignite.context().query().querySqlFields(new SqlFieldsQuery(createSql).setSchema(PUBLIC_SCHEMA), true).getAll();
 
-            System.out.println(all);
+            System.out.println("Result: " + all);
 
             String insertSql = "INSERT INTO " + TABLE_NAME + " VALUES (?, ?)";
 
