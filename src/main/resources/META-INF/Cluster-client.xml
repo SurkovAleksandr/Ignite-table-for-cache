@@ -12,7 +12,7 @@
     <bean class="org.apache.ignite.configuration.IgniteConfiguration">
         <property name="clientMode" value="true"/>
         <property name="igniteInstanceName" value="Cluster"/>
-        <property name="peerClassLoadingEnabled" value="false" />
+        <property name="peerClassLoadingEnabled" value="true" />
 
         <property name="discoverySpi">
             <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">

@@ -37,10 +37,10 @@ public class ClientNodeSpringStartup {
             IgniteCluster cluster = ignite.cluster();
             IgniteCompute compute = ignite.compute();
             /**
-             * todo изменение свойсвта {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)} не вызывает обновления
-             *  задачи на сервере
+             * Для того, чтобы была возможность отправить затачу на серверную ноду надо установить {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)}.
+             * Если серверу в classpath будут доступны необходимые классы, то {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)} не имеет значения.
              * */
-            compute.broadcast(() -> System.out.println("Hello node9: "));
+            compute.broadcast(() -> System.out.println("Hello node: "));
         }
     }
 
