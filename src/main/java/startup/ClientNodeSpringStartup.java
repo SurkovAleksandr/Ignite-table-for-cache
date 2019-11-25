@@ -108,7 +108,7 @@ public class ClientNodeSpringStartup {
 
             /**
              * Получение данных из кэша через SQL запрос
-             * todo Если таблицы нет, то будет ошибка: org.h2.jdbc.JdbcSQLException: Таблица "A_TABLE" не найдена
+             * Если таблицы нет, то будет ошибка: org.h2.jdbc.JdbcSQLException: Таблица "A_TABLE" не найдена
              * */
             System.out.println("Value through SQL");
             List<List<?>> all = cache.query(new SqlFieldsQuery("select * from " + TABLE_NAME)).getAll();
@@ -119,7 +119,7 @@ public class ClientNodeSpringStartup {
     }
 
     /**
-     * todo Попытка создать таблицу для уже существующего кэша. Не получается.
+     * Создание таблицы для уже существующего кэша.
      *
      * https://issues.apache.org/jira/browse/IGNITE-7113
      */
@@ -131,20 +131,10 @@ public class ClientNodeSpringStartup {
                 "name varchar) " +
                 "WITH \"CACHE_NAME=" + CACHE_NAME + ",template=partitioned,backups=1,affinity_key=id\";";
 
-            List<List<?>> all = ignite.context().query().querySqlFields(new SqlFieldsQuery(createSql).setSchema(PUBLIC_SCHEMA), true).getAll();
+            IgniteCache<Object, Object> cache = ignite.getOrCreateCache(CACHE_NAME);
+            int count = cache.query(new SqlFieldsQuery(createSql).setSchema(PUBLIC_SCHEMA)).getColumnsCount();
 
-            System.out.println("Result: " + all);
-
-            String insertSql = "INSERT INTO " + TABLE_NAME + " VALUES (?, ?)";
-
-            List<List<?>> insert1 = ignite.context().query().querySqlFields(new SqlFieldsQuery(insertSql)
-                .setArgs(3, "name_3")
-                .setSchema(PUBLIC_SCHEMA), true)
-                .getAll();
-            List<List<?>> insert2 = ignite.context().query().querySqlFields(new SqlFieldsQuery(insertSql)
-                .setArgs(4, "name_4")
-                .setSchema(PUBLIC_SCHEMA), true)
-                .getAll();
+            System.out.println("Result: " + count);
         }
     }
 }
