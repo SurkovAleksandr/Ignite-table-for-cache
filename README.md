@@ -1,13 +1,12 @@
-В этом проекте изучаются следующие вопросы:
-1) Можете уточнить как именно включить PeerClassLoading  для локальной разработки? Как это меняется вне файла конфига?
-2) Дело в том, что кешы могут не содержать таблицы (какой-нибудь владелец данных их не создал), 
-это значит что для запроса надо эти таблицы создать. Имеем ли мы права на создание таблиц и не будет ли это влиять на кого либо как либо?
+This project explores the following issues:
+1) Enabling PeerClassLoading.
+2) Cache can be created without table and SQL queries will not be run. Adding table for exist cache.
 
-Тест состоит из следующих шагов:
-1. запустить серевер: ServerNodeSpringStartup#main
-2. создать кэш без таблицы: ClientNodeSpringStartup#createCacheWithoutTable
-3. получить данные через итератор и SQL: ClientNodeSpringStartup#gettingValuesFromCache
-Через SQL ожидаемо получаем ошибку.
-4. создаем таблицу для кэша: ClientNodeSpringStartup#createTableForCache
-5. повторно вызываем получение данных: ClientNodeSpringStartup#gettingValuesFromCache
-теперь без ошибок
+For second case the test consists of the following steps:
+1. start server: ServerNodeSpringStartup#main
+2. create cache without table: ClientNodeSpringStartup#createCacheWithoutTable
+3. get data through iterator and SQL: ClientNodeSpringStartup#gettingValuesFromCache
+    Through SQL, we get the expected exception.
+4. create a table for the cache: ClientNodeSpringStartup#createTableForCache
+5. re-call data retrieval: ClientNodeSpringStartup#gettingValuesFromCache
+    Now we get them without exception.

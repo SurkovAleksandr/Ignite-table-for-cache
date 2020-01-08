@@ -20,70 +20,66 @@ import org.apache.ignite.internal.IgniteEx;
 import org.junit.Test;
 
 /**
- * Класс содержит тестовые методы, которые запускают клиентский узел.
+ * Class contains test methods for start up client nodes
  **/
 public class ClientNodeSpringStartup {
-    public static final String CACHE_NAME = "A_cache";
-    public static final String TABLE_NAME = "A_TABLE";
-    public static final String PUBLIC_SCHEMA = "PUBLIC";
+    private static final String clientCfgFile = "Cluster-client.xml";
+    private static final String CACHE_NAME = "A_cache";
+    private static final String TABLE_NAME = "A_TABLE";
+    private static final String PUBLIC_SCHEMA = "PUBLIC";
 
-    /**
-     * Исследование особенностей работы свойства {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)}
-     **/
+    /** Investigation of features of property work {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)} **/
     @Test
     public void peerClassLoadingTest() {
-        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start(clientCfgFile)) {
 
-            IgniteCluster cluster = ignite.cluster();
             IgniteCompute compute = ignite.compute();
             /**
-             * Для того, чтобы была возможность отправить затачу на серверную ноду надо установить {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)}.
-             * Если серверу в classpath будут доступны необходимые классы, то {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)} не имеет значения.
+             * In order to be able to send the task to the server node you need to set {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)}.
+             *
+             * If compute task will be available in classpath of server then {@link IgniteConfiguration#setPeerClassLoadingEnabled(boolean)} does not matter.
+             * It means that server should be started at other JVM
              * */
             compute.broadcast(() -> System.out.println("Hello node: "));
         }
     }
 
-    /**
-     * Создание кэша с именем {@link #CACHE_NAME} без таблицы и наполнение его данными.
-     * */
+    /** Creating cache {@link #CACHE_NAME} WITHOUT table and populate it with data. */
     @Test
     public void createCacheWithoutTable() {
-        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start(clientCfgFile)) {
             CacheConfiguration<Long, A> cacheCfg = new CacheConfiguration<>();
             cacheCfg
                 .setName(CACHE_NAME);
 
             IgniteCache<Long, A> cache = ignite.getOrCreateCache(cacheCfg);
-            //Наполнение кэша данными
+            //Populating the cache with data.
             for (long i = 1; i < 10; i++) {
                 cache.put(i, new A(i, "Vasja" + i));
             }
         }
     }
 
-    /**
-     * Создание кэша с именем {@link #CACHE_NAME} c таблицей и наполнение его данными.
-     * */
+    /** Creating cache {@link #CACHE_NAME} WITH table and populate it with data. * */
     @Test
     public void createCacheWithTable() {
-        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start(clientCfgFile)) {
             CacheConfiguration<Long, A> cacheCfg = new CacheConfiguration<>();
             cacheCfg
                 .setName(CACHE_NAME)
                 .setQueryEntities(Collections.singleton(new QueryEntity(long.class.getName(), A.class.getName())
                     .setTableName(TABLE_NAME)
                     .setFields(Stream.of(
-                        new AbstractMap.SimpleEntry<>("id", long.class.getName()),
-                        new AbstractMap.SimpleEntry<>("name", String.class.getName())
-                        ).collect(Collectors.toMap(
-                        AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue, (a, b) -> a, LinkedHashMap::new
-                        ))
+                                new AbstractMap.SimpleEntry<>("id", long.class.getName()),
+                                new AbstractMap.SimpleEntry<>("name", String.class.getName())
+                            ).collect(Collectors.toMap(
+                                AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue, (a, b) -> a, LinkedHashMap::new
+                            ))
                     )
                 ));
 
             IgniteCache<Long, A> cache = ignite.getOrCreateCache(cacheCfg);
-            //Наполнение кэша данными
+            //Populating the cache with data.
             for (long i = 1; i < 10; i++) {
                 cache.put(i, new A(i, "Vasja" + i));
             }
@@ -91,24 +87,24 @@ public class ClientNodeSpringStartup {
     }
 
     /**
-     * Получение данных их кэша различными способами:
-     *  - через итератор
-     *  - через SQL запрос. Работает, только если создана таблица для кэша
+     * Retrieving data from the cache different ways:
+     *  - through an iterator
+     *  - through SQL query. Only works if a table has been created for the cache.
      * */
     @Test
     public void gettingValuesFromCache() {
-        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start(clientCfgFile)) {
             IgniteCache<Object, Object> cache = ignite.getOrCreateCache(CACHE_NAME);
 
-            //Получение данных из кэша через итератор
+            //Retrieving data from the cache through an iterator
             System.out.println("Data through iterator");
             for (Cache.Entry<Object, Object> entry : cache) {
                 System.out.println("Value from cache: " + entry);
             }
 
             /**
-             * Получение данных из кэша через SQL запрос
-             * Если таблицы нет, то будет ошибка: org.h2.jdbc.JdbcSQLException: Таблица "A_TABLE" не найдена
+             * Retrieving data from cache via SQL query.
+             * If there is no table, then there will be an exception: org.h2.jdbc.JdbcSQLException
              * */
             System.out.println("Value through SQL");
             List<List<?>> all = cache.query(new SqlFieldsQuery("select * from " + TABLE_NAME)).getAll();
@@ -119,13 +115,13 @@ public class ClientNodeSpringStartup {
     }
 
     /**
-     * Создание таблицы для уже существующего кэша.
+     * Create a table for existing cache.
      *
      * https://issues.apache.org/jira/browse/IGNITE-7113
      */
     @Test
     public void createTableForCache() {
-        try (IgniteEx ignite = (IgniteEx)Ignition.start("Cluster-client.xml")) {
+        try (IgniteEx ignite = (IgniteEx)Ignition.start(clientCfgFile)) {
             String createSql = "CREATE TABLE IF NOT EXISTS " + TABLE_NAME +
                 "(id long PRIMARY KEY, " +
                 "name varchar) " +
